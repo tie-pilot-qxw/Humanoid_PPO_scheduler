@@ -26,8 +26,8 @@ class H1RoughCfg( LeggedRobotCfg ):
         }
     
     class env(LeggedRobotCfg.env):
-        num_observations = 42
-        num_actions = 10
+        num_observations = 66
+        num_actions = 18
       
 
     class control( LeggedRobotCfg.control ):
@@ -77,11 +77,12 @@ class H1RoughCfg( LeggedRobotCfg ):
             orientation = -1.0
             base_height = -100.0
             dof_acc = -3.5e-8
-            feet_air_time = 1.0
+            feet_air_time = 3.0
             collision = 0.0
             action_rate = -0.01
             torques = 0.0
             dof_pos_limits = -10.0
+            feet_contact_forces = 0.0
 
 class H1RoughCfgPPO( LeggedRobotCfgPPO ):
     class algorithm( LeggedRobotCfgPPO.algorithm ):

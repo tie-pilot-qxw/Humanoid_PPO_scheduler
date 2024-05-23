@@ -4,6 +4,7 @@ from typing import Tuple
 import torch
 import numpy as np
 import sys
+
 sys.path.append("/home/unitree/unitree_rl_gym/rsl_rl")
 
 from rsl_rl.env import VecEnv
@@ -12,17 +13,71 @@ from rsl_rl.runners import OnPolicyRunner
 from legged_gym import LEGGED_GYM_ROOT_DIR, LEGGED_GYM_ENVS_DIR
 from .helpers import get_args, update_cfg_from_args, class_to_dict, get_load_path, set_seed, parse_sim_params
 from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobotCfgPPO
+from legged_gym.envs.h1.h1_config import H1RoughCfg, H1RoughCfgPPO
+
+class ConfigScheduler:
+    def __init__(self, class_name, config, iteration, gap, operation = None):
+        self.flag = False
+        if operation is not None:
+            self.stop = True
+        else:
+            self.stop = False
+        self.config = config
+        self.gap = gap
+        self.steps = 0
+        self.type = eval(class_name)
+        self.items = [attr for attr in dir(self.type) if not callable(getattr(self.type, attr)) and not attr.startswith("__")]
+        if type(iteration) == self.type:
+            self.iteration = iteration
+        elif type(iteration) == int:
+            self.iteration = self.type()
+            for attr in self.items:
+                setattr(self.iteration, attr, iteration)
+        else:
+            raise ValueError('iteration type is not correct')
+
+    def step(self):
+        # update reward
+        if self.flag:
+            return False
+        self.steps += 1
+        flag = False
+        for attr in self.items:
+            iter = self.iteration.__getattribute__(attr)
+            if iter <= 0:
+                continue
+            if self.steps % int(iter) == 0:
+                flag = True
+                if self.stop:
+                    self.flag = True
+                old_reward = self.config.__getattribute__(attr)
+                add = self.gap.__getattribute__(attr)
+                if type(old_reward) == list:
+                    setattr(self.config, attr, [old_reward[i] + add[i] for i in range(len(old_reward))])
+                else:
+                    setattr(self.config, attr, old_reward + add)
+        return flag
 
 class TaskRegistry():
     def __init__(self):
         self.task_classes = {}
         self.env_cfgs = {}
         self.train_cfgs = {}
+        self.schedulers = {}
+        self.current_name = None
     
     def register(self, name: str, task_class: VecEnv, env_cfg: LeggedRobotCfg, train_cfg: LeggedRobotCfgPPO):
         self.task_classes[name] = task_class
         self.env_cfgs[name] = env_cfg
         self.train_cfgs[name] = train_cfg
+        if name == 'h1':
+            modif = H1RoughCfg.rewards.scales()
+            keys = [attr for attr in dir(modif) if not callable(getattr(modif, attr)) and not attr.startswith("__")]
+            for key in keys:
+                setattr(modif, key, 0)
+            # modif.collision = -0.1
+            # modif.feet_contact_forces = -1e-3
+            self.schedulers[name] = ConfigScheduler('H1RoughCfg.rewards.scales', env_cfg.rewards.scales, 20000, modif, 'once')
     
     def get_task_class(self, name: str) -> VecEnv:
         return self.task_classes[name]
@@ -55,6 +110,7 @@ class TaskRegistry():
         # check if there is a registered env with that name
         if name in self.task_classes:
             task_class = self.get_task_class(name)
+            self.current_name = name
         else:
             raise ValueError(f"Task with name: {name} was not registered")
         if env_cfg is None:
@@ -65,7 +121,12 @@ class TaskRegistry():
         set_seed(env_cfg.seed)
         # parse sim params (convert to dict first)
         sim_params = {"sim": class_to_dict(env_cfg.sim)}
+
+        print(type(sim_params), sim_params)
         sim_params = parse_sim_params(args, sim_params)
+
+        
+
         env = task_class(   cfg=env_cfg,
                             sim_params=sim_params,
                             physics_engine=args.physics_engine,
@@ -116,7 +177,10 @@ class TaskRegistry():
             log_dir = os.path.join(log_root, datetime.now().strftime('%b%d_%H-%M-%S') + '_' + train_cfg.runner.run_name)
         
         train_cfg_dict = class_to_dict(train_cfg)
-        runner = OnPolicyRunner(env, train_cfg_dict, log_dir, device=args.rl_device)
+
+
+
+        runner = OnPolicyRunner(env, train_cfg_dict, log_dir, device=args.rl_device, task_registry=self, args=args)
         #save resume path before creating a new log_dir
         resume = train_cfg.runner.resume
         if resume:

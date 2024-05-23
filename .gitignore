@@ -1,0 +1,8 @@
+*.pyc
+*.txt
+*.pt
+events.out.tfevents.*
+.vscode/
+__pycache__/
+reward
+*.cpython-38.pyc

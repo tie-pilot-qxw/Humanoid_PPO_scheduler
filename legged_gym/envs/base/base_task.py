@@ -68,6 +68,7 @@ class BaseTask():
                 self.viewer, gymapi.KEY_ESCAPE, "QUIT")
             self.gym.subscribe_viewer_keyboard_event(
                 self.viewer, gymapi.KEY_V, "toggle_viewer_sync")
+            
 
     def get_observations(self):
         return self.obs_buf
@@ -113,3 +114,8 @@ class BaseTask():
                     self.gym.sync_frame_time(self.sim)
             else:
                 self.gym.poll_viewer_events(self.viewer)
+
+    def __del__(self):
+        self.gym.destroy_sim(self.sim)
+        if self.viewer:
+            self.gym.destroy_viewer(self.viewer)

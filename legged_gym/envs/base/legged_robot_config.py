@@ -12,7 +12,7 @@ class LeggedRobotCfg(BaseConfig):
         test = False
 
     class terrain:
-        mesh_type = 'plane' # "heightfield" # none, plane, heightfield or trimesh
+        mesh_type = 'trimesh' # "heightfield" # none, plane, heightfield or trimesh
         horizontal_scale = 0.1 # [m]
         vertical_scale = 0.005 # [m]
         border_size = 25 # [m]
@@ -24,7 +24,7 @@ class LeggedRobotCfg(BaseConfig):
         measure_heights = True
         measured_points_x = [-0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8] # 1mx1.6m rectangle (without center line)
         measured_points_y = [-0.5, -0.4, -0.3, -0.2, -0.1, 0., 0.1, 0.2, 0.3, 0.4, 0.5]
-        selected = False # select a unique terrain type and pass all arguments
+        selected = True # select a unique terrain type and pass all arguments
         terrain_kwargs = None # Dict of arguments for selected terrain
         max_init_terrain_level = 5 # starting curriculum state
         terrain_length = 8.
@@ -43,8 +43,8 @@ class LeggedRobotCfg(BaseConfig):
         resampling_time = 10. # time before command are changed[s]
         heading_command = True # if true: compute ang vel command from heading error
         class ranges:
-            lin_vel_x = [-1.0, 1.0] # min max [m/s]
-            lin_vel_y = [-1.0, 1.0]   # min max [m/s]
+            lin_vel_x = [-2, 2] # min max [m/s]
+            lin_vel_y = [-2, 2]   # min max [m/s]
             ang_vel_yaw = [-1, 1]    # min max [rad/s]
             heading = [-3.14, 3.14]
 
@@ -116,7 +116,7 @@ class LeggedRobotCfg(BaseConfig):
             action_rate = -0.01
             stand_still = -0.
 
-        only_positive_rewards = True # if true negative total rewards are clipped at zero (avoids early termination problems)
+        only_positive_rewards = False # if true negative total rewards are clipped at zero (avoids early termination problems)
         tracking_sigma = 0.25 # tracking reward = exp(-error^2/sigma)
         soft_dof_pos_limit = 1. # percentage of urdf limits, values above this limit are penalized
         soft_dof_vel_limit = 1.
@@ -175,13 +175,13 @@ class LeggedRobotCfgPPO(BaseConfig):
     runner_class_name = 'OnPolicyRunner'
     class policy:
         init_noise_std = 1.0
-        actor_hidden_dims = [512, 256, 128]
-        critic_hidden_dims = [512, 256, 128]
-        activation = 'elu' # can be elu, relu, selu, crelu, lrelu, tanh, sigmoid
+        actor_hidden_dims = [1024, 512,256]#[512, 256,128]# 
+        critic_hidden_dims = [1024, 512,256]#[512, 256, 128]# [1024, 512, 256]
+        activation = 'lrelu' # can be elu, relu, selu, crelu, lrelu, tanh, sigmoid
         # only for 'ActorCriticRecurrent':
-        # rnn_type = 'lstm'
-        # rnn_hidden_size = 512
-        # rnn_num_layers = 1
+        rnn_type = 'gru'
+        rnn_hidden_size = 128
+        rnn_num_layers = 1
         
     class algorithm:
         # training params
@@ -199,10 +199,10 @@ class LeggedRobotCfgPPO(BaseConfig):
         max_grad_norm = 1.
 
     class runner:
-        policy_class_name = 'ActorCritic'
+        policy_class_name = 'ActorCriticRecurrent'
         algorithm_class_name = 'PPO'
         num_steps_per_env = 24 # per iteration
-        max_iterations = 1500 # number of policy updates
+        max_iterations = 500 # number of policy updates
 
         # logging
         save_interval = 50 # check for potential saves every this many iterations

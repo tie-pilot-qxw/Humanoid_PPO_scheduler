@@ -1,5 +1,5 @@
 import sys
-sys.path.append("/home/unitree/unitree_rl_gym")
+sys.path.append("/home/xinweiqiang/code/unitree_rl_gym")
 from legged_gym import LEGGED_GYM_ROOT_DIR
 import os
 
@@ -43,7 +43,7 @@ def play(args):
         obs, _, rews, dones, infos = env.step(actions.detach())
 
 if __name__ == '__main__':
-    EXPORT_POLICY = True
+    EXPORT_POLICY = False
     RECORD_FRAMES = False
     MOVE_CAMERA = False
     args = get_args()

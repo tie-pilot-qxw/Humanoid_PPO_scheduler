@@ -51,6 +51,7 @@ class OnPolicyRunner:
                  task_registry=None,
                  args=None,):
 
+        self.train_cfg = train_cfg
         self.args = args
         self.task_registry = task_registry
         self.cfg=train_cfg["runner"]
@@ -144,6 +145,23 @@ class OnPolicyRunner:
 
             if self.task_registry.schedulers[self.task_registry.current_name].step():
                 self.update_env()
+
+                # # initialize writer
+                # if self.log_dir is not None and self.writer is None:
+                #     self.writer = SummaryWriter(log_dir=self.log_dir, flush_secs=10)
+                if init_at_random_ep_len:
+                    self.env.episode_length_buf = torch.randint_like(self.env.episode_length_buf, high=int(self.env.max_episode_length))
+                obs = self.env.get_observations()
+                privileged_obs = self.env.get_privileged_observations()
+                critic_obs = privileged_obs if privileged_obs is not None else obs
+                obs, critic_obs = obs.to(self.device), critic_obs.to(self.device)
+                self.alg.actor_critic.train() # switch to train mode (for dropout for example)
+
+                ep_infos = []
+                rewbuffer = deque(maxlen=100)
+                lenbuffer = deque(maxlen=100)
+                cur_reward_sum = torch.zeros(self.env.num_envs, dtype=torch.float, device=self.device)
+                cur_episode_length = torch.zeros(self.env.num_envs, dtype=torch.float, device=self.device)
         
         self.current_learning_iteration += num_learning_iterations
         self.save(os.path.join(self.log_dir, 'model_{}.pt'.format(self.current_learning_iteration)))
@@ -243,9 +261,5 @@ class OnPolicyRunner:
         self.env.__del__()
         new_env, env_cfg = self.task_registry.make_env(name=self.task_registry.current_name, args=self.args)
         self.env = new_env
-        if self.env.num_privileged_obs is not None:
-            num_critic_obs = self.env.num_privileged_obs 
-        else:
-            num_critic_obs = self.env.num_obs
-        if self.cfg["policy_class_name"] != 'ActorCritic':
-            pass
+        self.alg = PPO(self.alg.actor_critic, device=self.device, **self.alg_cfg)
+        self.alg.init_storage(self.env.num_envs, self.num_steps_per_env, [self.env.num_obs], [self.env.num_privileged_obs], [self.env.num_actions])

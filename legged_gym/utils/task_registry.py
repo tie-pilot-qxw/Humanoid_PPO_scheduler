@@ -74,9 +74,9 @@ class TaskRegistry():
             keys = [attr for attr in dir(modif) if not callable(getattr(modif, attr)) and not attr.startswith("__")]
             for key in keys:
                 setattr(modif, key, 0)
-            # modif.collision = -0.1
-            # modif.feet_contact_forces = -1e-3
-            self.schedulers[name] = ConfigScheduler('H1RoughCfg.rewards.scales', env_cfg.rewards.scales, 20000, modif, 'once')
+            modif.collision = -0.1
+            modif.feet_contact_forces = -1e-5
+            self.schedulers[name] = ConfigScheduler('H1RoughCfg.rewards.scales', env_cfg.rewards.scales, 2, modif, 'once')
     
     def get_task_class(self, name: str) -> VecEnv:
         return self.task_classes[name]

@@ -6,3 +6,5 @@ events.out.tfevents.*
 __pycache__/
 reward
 *.cpython-38.pyc
+*/__pycache__/
+legged_gym/envs/h1/__pycache__/h1_config.cpython-38.pyc

@@ -5,7 +5,6 @@ import torch
 import numpy as np
 import sys
 
-sys.path.append("/home/unitree/unitree_rl_gym/rsl_rl")
 
 from rsl_rl.env import VecEnv
 from rsl_rl.runners import OnPolicyRunner

@@ -14,48 +14,7 @@ from .helpers import get_args, update_cfg_from_args, class_to_dict, get_load_pat
 from legged_gym.envs.base.legged_robot_config import LeggedRobotCfg, LeggedRobotCfgPPO
 from legged_gym.envs.h1.h1_config import H1RoughCfg, H1RoughCfgPPO
 
-class ConfigScheduler:
-    def __init__(self, class_name, config, iteration, gap, operation = None):
-        self.flag = False
-        if operation is not None:
-            self.stop = True
-        else:
-            self.stop = False
-        self.config = config
-        self.gap = gap
-        self.steps = 0
-        self.type = eval(class_name)
-        self.items = [attr for attr in dir(self.type) if not callable(getattr(self.type, attr)) and not attr.startswith("__")]
-        if type(iteration) == self.type:
-            self.iteration = iteration
-        elif type(iteration) == int:
-            self.iteration = self.type()
-            for attr in self.items:
-                setattr(self.iteration, attr, iteration)
-        else:
-            raise ValueError('iteration type is not correct')
-
-    def step(self):
-        # update reward
-        if self.flag:
-            return False
-        self.steps += 1
-        flag = False
-        for attr in self.items:
-            iter = self.iteration.__getattribute__(attr)
-            if iter <= 0:
-                continue
-            if self.steps % int(iter) == 0:
-                flag = True
-                if self.stop:
-                    self.flag = True
-                old_reward = self.config.__getattribute__(attr)
-                add = self.gap.__getattribute__(attr)
-                if type(old_reward) == list:
-                    setattr(self.config, attr, [old_reward[i] + add[i] for i in range(len(old_reward))])
-                else:
-                    setattr(self.config, attr, old_reward + add)
-        return flag
+from scheduler.scheduler import ConfigScheduler
 
 class TaskRegistry():
     def __init__(self):
@@ -76,7 +35,7 @@ class TaskRegistry():
                 setattr(modif, key, 0)
             modif.collision = -0.1
             modif.feet_contact_forces = -1e-5
-            self.schedulers[name] = ConfigScheduler('H1RoughCfg.rewards.scales', env_cfg.rewards.scales, 2, modif, 'once')
+            self.schedulers[name] = ConfigScheduler(type(env_cfg.rewards.scales), env_cfg.rewards.scales, 800, modif, 'once')
     
     def get_task_class(self, name: str) -> VecEnv:
         return self.task_classes[name]
